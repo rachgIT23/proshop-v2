@@ -1,5 +1,3 @@
-// backend/server.js
-
 import path from 'path';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
@@ -15,7 +13,7 @@ console.log('MONGO_URI from .env:', process.env.MONGO_URI);
 
 import express from 'express';
 import cookieParser from 'cookie-parser';
-import cors from 'cors';   // ✅ Added this
+import cors from 'cors';                  // <-- added
 import connectDB from './config/db.js';
 import productRoutes from './routes/productRoutes.js';
 import userRoutes from './routes/userRoutes.js';
@@ -23,32 +21,37 @@ import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import { notFound, errorHandler } from './middleware/errorMiddleware.js';
 
-// Connect to MongoDB
 const port = process.env.PORT || 5000;
 connectDB();
 
 const app = express();
 
-// Middlewares
+// CORS config - allow Vercel domain + local dev
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://proshop-backend-k60c.onrender.com', // keep backend host if needed
+  'https://proshop-7j0kx5g2a-rachana-rs-projects-aa77c7f2.vercel.app/' // <-- REPLACE with your Vercel URL
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    // allow requests with no origin (mobile, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      // For development you can allow all by using callback(null, true)
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// ✅ Enable CORS — allow requests from your frontend URL
-const allowedOrigins = [
-  'http://localhost:3000',
-  'https://proshop-git-main-rachana-rs-projects-aa77cf12.vercel.app', // 🟢 your actual Vercel URL
-  'https://proshop-a0qkv7qff-rachana-rs-projects-aa77cf12.vercel.app', // (add both if shown in Vercel)
-];
-
-app.use(
-  cors({
-    origin: allowedOrigins,
-    credentials: true,
-  })
-);
-
-// Routes
+// routes
 app.use('/api/products', productRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/orders', orderRoutes);
@@ -58,7 +61,7 @@ app.get('/api/config/paypal', (req, res) =>
   res.send({ clientId: process.env.PAYPAL_CLIENT_ID || 'sb' })
 );
 
-// Serve static files
+// static and uploads
 if (process.env.NODE_ENV === 'production') {
   app.use('/uploads', express.static('/var/data/uploads'));
   app.use(express.static(path.join(__dirname, '..', 'frontend', 'build')));
@@ -75,5 +78,5 @@ app.use(notFound);
 app.use(errorHandler);
 
 app.listen(port, () =>
-  console.log(`✅ Server running in ${process.env.NODE_ENV || 'development'} mode on port ${port}`)
+  console.log(`Server running in ${process.env.NODE_ENV || 'development'} mode on port ${port}`)
 );
